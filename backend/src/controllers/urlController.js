@@ -1,4 +1,5 @@
 const urlService = require('../services/urlService');
+const { isValidUrl, isValidCode } = require('../middleware/validate');
 
 function list(req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -18,7 +19,13 @@ function getOne(req, res) {
 async function create(req, res, next) {
   try {
     const { original_url, code } = req.body;
-    if (!original_url) return res.status(400).json({ error: 'original_url is required' });
+
+    if (!isValidUrl(original_url)) {
+      return res.status(400).json({ error: 'original_url must be a valid http or https URL' });
+    }
+    if (code && !isValidCode(code)) {
+      return res.status(400).json({ error: 'code must be 1–100 alphanumeric characters' });
+    }
 
     const record = urlService.createUrl(original_url, code || null);
     res.status(201).json(record);
@@ -37,8 +44,22 @@ async function bulkCreate(req, res, next) {
       return res.status(400).json({ error: 'urls must be a non-empty array' });
     }
 
-    const result = urlService.bulkCreateUrls(urls);
-    res.status(201).json(result);
+    // Filter out invalid URLs before passing to service
+    const valid = [];
+    const errors = [];
+    for (const url of urls) {
+      if (isValidUrl(url)) {
+        valid.push(url);
+      } else {
+        errors.push({ url, error: 'Invalid URL — must be http or https' });
+      }
+    }
+
+    const result = urlService.bulkCreateUrls(valid);
+    res.status(201).json({
+      results: result.results,
+      errors: [...errors, ...result.errors],
+    });
   } catch (err) {
     next(err);
   }
@@ -47,6 +68,14 @@ async function bulkCreate(req, res, next) {
 async function update(req, res, next) {
   try {
     const { code, original_url, click_count } = req.body;
+
+    if (original_url !== undefined && !isValidUrl(original_url)) {
+      return res.status(400).json({ error: 'original_url must be a valid http or https URL' });
+    }
+    if (code !== undefined && !isValidCode(code)) {
+      return res.status(400).json({ error: 'code must be 1–100 alphanumeric characters' });
+    }
+
     const record = await urlService.updateUrl(req.params.id, { code, original_url, click_count });
     if (!record) return res.status(404).json({ error: 'Not found' });
     res.json(record);

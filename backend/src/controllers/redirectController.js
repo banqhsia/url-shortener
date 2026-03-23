@@ -1,5 +1,9 @@
+const fs = require('fs');
+const path = require('path');
 const { getCachedUrl, setCachedUrl } = require('../services/cacheService');
 const { getUrlByCode, incrementClickCount } = require('../services/urlService');
+
+const page404 = fs.readFileSync(path.join(__dirname, '../views/404.html'), 'utf-8');
 
 async function redirect(req, res) {
   const { code } = req.params;
@@ -8,7 +12,7 @@ async function redirect(req, res) {
 
   if (!record) {
     record = getUrlByCode(code);
-    if (!record) return res.status(404).send('Short URL not found');
+    if (!record) return res.status(404).type('html').send(page404);
     await setCachedUrl(code, record);
   }
 
