@@ -4,6 +4,8 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    ports:
+      - "3100:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
