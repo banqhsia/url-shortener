@@ -6,4 +6,6 @@ module.exports = {
   DB_PATH: process.env.DB_PATH || './data/urls.db',
   BASE_URL: process.env.BASE_URL || 'http://localhost',
   HASHIDS_SALT: process.env.HASHIDS_SALT || 'change-me-in-production',
+  SESSION_SECRET: process.env.SESSION_SECRET || 'change-me-session-secret',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
 };
