@@ -1,8 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const RedisStore = require('connect-redis').default;
 const cors = require('cors');
-const redis = require('./config/redis');
 const { SESSION_SECRET } = require('./config/env');
 const router = require('./routes');
 const requireAuth = require('./middleware/requireAuth');
@@ -14,8 +12,7 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
-app.use(session({
-  store: new RedisStore({ client: redis, prefix: 'sess:', ttl: 21600 }),
+const sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -25,7 +22,15 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 6 * 60 * 60 * 1000,
   },
-}));
+};
+
+if (process.env.NODE_ENV !== 'test') {
+  const RedisStore = require('connect-redis').default;
+  const redis = require('./config/redis');
+  sessionConfig.store = new RedisStore({ client: redis, prefix: 'sess:', ttl: 21600 });
+}
+
+app.use(session(sessionConfig));
 
 app.use('/api/auth', require('./routes/api/auth'));
 app.use('/api', requireAuth);
