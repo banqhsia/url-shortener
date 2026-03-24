@@ -168,6 +168,12 @@ run_live_tests() {
     -H "Content-Type: application/json" -d '{"original_url":"https://example.com"}')
   assert_status "POST /api/urls without auth → 401" 401 "$STATUS"
 
+  # ── Rate limiting headers ─────────────────────────────────────────────────
+  section "Rate limiting"
+
+  HEADERS=$(curl -sI -b "$COOKIE_JAR" "$BASE_URL/api/urls")
+  assert_contains "API response includes RateLimit-Limit header" 'ratelimit-limit' "$(echo "$HEADERS" | tr '[:upper:]' '[:lower:]')"
+
   # ── Delete URL ────────────────────────────────────────────────────────────
   section "Cleanup"
 
