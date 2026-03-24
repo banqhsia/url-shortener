@@ -6,13 +6,20 @@ A self-hosted URL shortener with a management backstage, built with Node.js, SQL
 
 - **Short links** — `<domain>/<code>` with hashids-based code generation (no collision possible)
 - **Redis cache** — recently visited links cached for 15 minutes
+- **URL expiry** — set an optional expiration date; expired links return HTTP 410 Gone
 - **Management backstage** at `/admin`
-  - Statistics dashboard — most clicked links today (UTC+8)
-  - Paginated URL list (25/page) with search by code or URL
+  - Statistics dashboard — today's total clicks + top clicked links (UTC+8)
+  - Paginated URL list (25/page) with search and sortable columns
   - Create, edit, and delete individual links
   - Bulk creation via textarea (one URL per line)
+  - Per-URL analytics — daily click chart (7d/30d), device breakdown, top referrers
+  - QR code generation and PNG download on the edit page
+  - CSV export of all URLs
+- **Click source tracking** — records referrer and device type (mobile / bot / desktop) per click
+- **URL health checks** — background job checks each link every 10 minutes; status shown in the list
 - **Authentication** — password-protected admin panel; 6-hour sessions stored in Redis
-- **Security** — URL validation (http/https only), alphanumeric-only codes, parameterized SQL queries
+- **Rate limiting** — protects login (10/15 min), redirects (120/60 s), and API (300/60 s)
+- **Security** — URL validation (http/https only), alphanumeric-only codes, parameterized SQL queries, timing-safe password comparison
 
 ## Tech Stack
 
@@ -21,7 +28,7 @@ A self-hosted URL shortener with a management backstage, built with Node.js, SQL
 | Backend | Node.js + Express |
 | Frontend | React + Vite (served by Nginx) |
 | Database | SQLite via `better-sqlite3` |
-| Cache | Redis (15-min TTL) |
+| Cache / Sessions | Redis (15-min URL TTL, 6-hour session TTL) |
 | Container | Docker + Docker Compose |
 
 ## Deployment
@@ -116,19 +123,28 @@ docker compose pull && docker compose up --build -d  # update & rebuild
 
 ```
 GET /<code>  →  302 redirect to original URL
+             →  410 Gone if the link has expired
+             →  404 if the code doesn't exist
 ```
 
 ### API
 
+All endpoints under `/api/` require authentication (session cookie from `POST /api/auth/login`).
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/urls` | List URLs (`?page=1&limit=25&q=search`) |
-| `POST` | `/api/urls` | Create one (`{ "original_url": "...", "code": "optional" }`) |
+| `POST` | `/api/auth/login` | Login (`{ "password": "..." }`) |
+| `POST` | `/api/auth/logout` | Logout |
+| `GET` | `/api/auth/me` | Check session |
+| `GET` | `/api/urls` | List URLs (`?page&limit&q&sort_by&sort_dir`) |
+| `POST` | `/api/urls` | Create one (`{ "original_url", "code"?, "expires_at"? }`) |
 | `POST` | `/api/urls/bulk` | Bulk create (`{ "urls": ["https://...", ...] }`) |
+| `GET` | `/api/urls/export` | Download all as CSV |
 | `GET` | `/api/urls/:id` | Get single record |
 | `PUT` | `/api/urls/:id` | Update record |
 | `DELETE` | `/api/urls/:id` | Delete record |
 | `GET` | `/api/stats/dashboard` | Today's stats (UTC+8) |
+| `GET` | `/api/stats/url/:id` | Per-URL analytics (`?period=7d\|30d`) |
 
 ### Docker commands
 
@@ -148,9 +164,10 @@ url-shortener/
 │   └── src/
 │       ├── config/   # db, redis, env
 │       ├── controllers/
+│       ├── db/migrations/  # incremental SQL migrations
 │       ├── middleware/
 │       ├── routes/
-│       ├── services/
+│       ├── services/ # urlService, cacheService, healthChecker
 │       ├── utils/    # hashids wrapper
 │       └── views/    # 404.html
 └── frontend/         # React SPA (Nginx)
