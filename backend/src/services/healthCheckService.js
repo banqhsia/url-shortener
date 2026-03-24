@@ -78,4 +78,20 @@ function stopHealthCheckScheduler() {
   if (_timer) { clearInterval(_timer); _timer = null; }
 }
 
-module.exports = { checkUrl, runHealthChecks, startHealthCheckScheduler, stopHealthCheckScheduler };
+async function checkAndUpdateUrl(id) {
+  const db = getDb();
+  const url = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  if (!url) return;
+
+  const alive = await checkUrl(url.original_url);
+  const now = Math.floor(Date.now() / 1000);
+
+  db.prepare('UPDATE urls SET is_alive = ?, last_checked_at = ? WHERE id = ?')
+    .run(alive ? 1 : 0, now, id);
+
+  const updated = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  const { setCachedUrl } = require('./cacheService');
+  await setCachedUrl(updated.code, updated);
+}
+
+module.exports = { checkUrl, runHealthChecks, startHealthCheckScheduler, stopHealthCheckScheduler, checkAndUpdateUrl };

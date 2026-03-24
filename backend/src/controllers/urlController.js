@@ -1,5 +1,6 @@
 const urlService = require('../services/urlService');
 const { isValidUrl, isValidCode } = require('../middleware/validate');
+const { checkAndUpdateUrl } = require('../services/healthCheckService');
 
 function list(req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -37,6 +38,7 @@ async function create(req, res, next) {
 
     const expiresAtValue = (expires_at !== undefined && expires_at !== null) ? Number(expires_at) : null;
     const record = urlService.createUrl(original_url, code || null, expiresAtValue);
+    checkAndUpdateUrl(record.id).catch(() => {});
     res.status(201).json(record);
   } catch (err) {
     if (err.message.includes('already exists') || err.message.includes('UNIQUE')) {
@@ -94,6 +96,7 @@ async function update(req, res, next) {
     const expiresAtValue = expires_at !== undefined ? (expires_at === null ? null : Number(expires_at)) : undefined;
     const record = await urlService.updateUrl(req.params.id, { code, original_url, click_count, expires_at: expiresAtValue });
     if (!record) return res.status(404).json({ error: 'Not found' });
+    checkAndUpdateUrl(record.id).catch(() => {});
     res.json(record);
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
