@@ -224,6 +224,17 @@ run_live_tests() {
   assert_contains "URL list includes is_alive field" '"is_alive"' "$LIST"
   assert_contains "URL list includes last_checked_at field" '"last_checked_at"' "$LIST"
 
+  # ── Click source tracking ─────────────────────────────────────────────────
+  section "Click Source Tracking"
+
+  # Hit with a known referrer
+  curl -s --max-redirs 0 -H "Referer: https://test-referrer.example.com" "$BASE_URL/$CODE" > /dev/null || true
+  sleep 0.5
+
+  STATS2=$(curl -s -b "$COOKIE_JAR" "$BASE_URL/api/stats/url/$ID")
+  assert_contains "Stats include devices breakdown" '"devices"' "$STATS2"
+  assert_contains "Stats include top_referrers" '"top_referrers"' "$STATS2"
+
   # ── Rate limiting headers ─────────────────────────────────────────────────
   section "Rate limiting"
 

@@ -1,0 +1,2 @@
+ALTER TABLE click_events ADD COLUMN referrer TEXT DEFAULT NULL;
+ALTER TABLE click_events ADD COLUMN device_type TEXT DEFAULT NULL;

@@ -90,6 +90,37 @@ export default function UrlStats() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          {stats.devices && Object.keys(stats.devices).length > 0 && (
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 16 }}>
+              {Object.entries(stats.devices).map(([type, count]) => (
+                <div key={type} className="card" style={{ minWidth: 120, textAlign: 'center', padding: '12px 16px' }}>
+                  <p style={{ fontSize: 12, color: '#888', marginBottom: 4, textTransform: 'capitalize' }}>{type}</p>
+                  <p style={{ fontSize: 22, fontWeight: 700 }}>{count.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {stats.top_referrers && stats.top_referrers.length > 0 && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Top Referrers</h2>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Referrer</th><th>Clicks</th></tr>
+                  </thead>
+                  <tbody>
+                    {stats.top_referrers.map((r, i) => (
+                      <tr key={i}>
+                        <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{r.referrer}</td>
+                        <td>{r.count.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

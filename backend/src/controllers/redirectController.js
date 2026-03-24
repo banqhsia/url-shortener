@@ -25,8 +25,10 @@ async function redirect(req, res) {
     }
   }
 
-  // Non-blocking increment — send redirect first
-  setImmediate(() => incrementClickCount(record.id));
+  // Non-blocking increment — capture referrer and user-agent, send redirect first
+  const referrer = req.headers['referer'] || req.headers['referrer'] || null;
+  const userAgent = req.headers['user-agent'] || null;
+  setImmediate(() => incrementClickCount(record.id, referrer, userAgent));
 
   res.redirect(302, record.original_url);
 }

@@ -88,11 +88,34 @@ function urlStats(req, res) {
 
   const daily = buckets.map(({ date, clicks }) => ({ date, clicks }));
 
+  // Device type breakdown for the period
+  const deviceRows = db
+    .prepare(
+      `SELECT COALESCE(device_type, 'unknown') AS device_type, COUNT(*) AS count
+       FROM click_events WHERE url_id = ? AND clicked_at >= ?
+       GROUP BY device_type`
+    )
+    .all(urlId, windowStart);
+
+  const devices = {};
+  for (const r of deviceRows) devices[r.device_type] = r.count;
+
+  // Top referrers for the period (up to 10)
+  const referrerRows = db
+    .prepare(
+      `SELECT COALESCE(referrer, 'direct') AS referrer, COUNT(*) AS count
+       FROM click_events WHERE url_id = ? AND clicked_at >= ?
+       GROUP BY referrer ORDER BY count DESC LIMIT 10`
+    )
+    .all(urlId, windowStart);
+
   res.json({
     url,
     period: `${periodDays}d`,
     total_clicks: daily.reduce((s, d) => s + d.clicks, 0),
     daily,
+    devices,
+    top_referrers: referrerRows,
   });
 }
 

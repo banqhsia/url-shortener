@@ -123,12 +123,23 @@ async function deleteUrl(id) {
   return true;
 }
 
-function incrementClickCount(urlId) {
+function parseDeviceType(ua) {
+  if (!ua) return 'unknown';
+  const lower = ua.toLowerCase();
+  if (/mobile|android|iphone|ipad|ipod|blackberry|opera mini|iemobile/i.test(lower)) return 'mobile';
+  if (/bot|crawler|spider|slurp|bingbot|googlebot/i.test(lower)) return 'bot';
+  return 'desktop';
+}
+
+function incrementClickCount(urlId, referrer = null, userAgent = null) {
   const db = getDb();
+  const deviceType = parseDeviceType(userAgent);
   db.prepare(
     'UPDATE urls SET click_count = click_count + 1, updated_at = unixepoch() WHERE id = ?'
   ).run(urlId);
-  db.prepare('INSERT INTO click_events (url_id) VALUES (?)').run(urlId);
+  db.prepare(
+    'INSERT INTO click_events (url_id, referrer, device_type) VALUES (?, ?, ?)'
+  ).run(urlId, referrer || null, deviceType);
 }
 
 module.exports = {
