@@ -7,6 +7,9 @@ const { runMigrations } = require('./db/migrate');
 
 runMigrations();
 
+const { startHealthCheckScheduler } = require('./services/healthCheckService');
+startHealthCheckScheduler();
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

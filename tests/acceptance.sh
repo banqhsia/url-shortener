@@ -217,6 +217,13 @@ run_live_tests() {
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/urls/export")
   assert_status "Export without auth → 401" 401 "$STATUS"
 
+  # ── Health check fields ───────────────────────────────────────────────────
+  section "Health Check"
+
+  LIST=$(curl -s -b "$COOKIE_JAR" "$BASE_URL/api/urls")
+  assert_contains "URL list includes is_alive field" '"is_alive"' "$LIST"
+  assert_contains "URL list includes last_checked_at field" '"last_checked_at"' "$LIST"
+
   # ── Rate limiting headers ─────────────────────────────────────────────────
   section "Rate limiting"
 

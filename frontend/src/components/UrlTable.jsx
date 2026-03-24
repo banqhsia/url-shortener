@@ -48,7 +48,12 @@ export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, Sor
                   {row.code}
                 </a>
               </td>
-              <td className="url-cell" title={row.original_url}>{row.original_url}</td>
+              <td className="url-cell" title={row.original_url}>
+                {row.is_alive === 1 && <span title="URL is reachable" style={{ marginRight: 6, color: '#22c55e' }}>●</span>}
+                {row.is_alive === 0 && <span title="URL is unreachable" style={{ marginRight: 6, color: '#ef4444' }}>●</span>}
+                {row.is_alive === null && <span title="Not yet checked" style={{ marginRight: 6, color: '#d1d5db' }}>●</span>}
+                {row.original_url}
+              </td>
               <td>{row.click_count.toLocaleString()}</td>
               <td>
                 <div className="actions">
