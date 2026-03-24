@@ -52,6 +52,9 @@ export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, Sor
               <td>{row.click_count.toLocaleString()}</td>
               <td>
                 <div className="actions">
+                  <button className="btn btn-secondary" onClick={() => navigate(`/admin/urls/${row.id}/stats`)}>
+                    Stats
+                  </button>
                   <button className="btn btn-secondary" onClick={() => navigate(`/admin/urls/${row.id}/edit`)}>
                     Edit
                   </button>

@@ -190,6 +190,20 @@ run_live_tests() {
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$BASE_URL/$FUT_CODE")
   assert_status "Non-expired URL still redirects 302" 302 "$STATUS"
 
+  # ── Per-URL analytics ────────────────────────────────────────────────────
+  section "Per-URL Analytics"
+
+  STATS=$(curl -s -b "$COOKIE_JAR" "$BASE_URL/api/stats/url/$ID")
+  assert_contains "GET /api/stats/url/:id returns url field" '"url"' "$STATS"
+  assert_contains "GET /api/stats/url/:id returns daily array" '"daily"' "$STATS"
+  assert_contains "GET /api/stats/url/:id returns total_clicks" '"total_clicks"' "$STATS"
+
+  STATS30=$(curl -s -b "$COOKIE_JAR" "$BASE_URL/api/stats/url/$ID?period=30d")
+  assert_contains "period=30d accepted" '"30d"' "$STATS30"
+
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" "$BASE_URL/api/stats/url/999999")
+  assert_status "GET /api/stats/url/nonexistent → 404" 404 "$STATUS"
+
   # ── Rate limiting headers ─────────────────────────────────────────────────
   section "Rate limiting"
 

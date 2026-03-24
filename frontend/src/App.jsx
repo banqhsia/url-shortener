@@ -8,6 +8,7 @@ import UrlList from './pages/UrlList.jsx';
 import UrlCreate from './pages/UrlCreate.jsx';
 import UrlEdit from './pages/UrlEdit.jsx';
 import BulkCreate from './pages/BulkCreate.jsx';
+import UrlStats from './pages/UrlStats.jsx';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
               <Route path="urls/new" element={<UrlCreate />} />
               <Route path="urls/bulk" element={<BulkCreate />} />
               <Route path="urls/:id/edit" element={<UrlEdit />} />
+              <Route path="urls/:id/stats" element={<UrlStats />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/admin" replace />} />
