@@ -5,8 +5,10 @@ function list(req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, parseInt(req.query.limit) || 25);
   const q = (req.query.q || '').trim();
+  const sort_by = (req.query.sort_by || 'created_at').trim();
+  const sort_dir = (req.query.sort_dir || 'desc').trim();
 
-  const result = urlService.getUrls({ page, limit, q });
+  const result = urlService.getUrls({ page, limit, q, sort_by, sort_dir });
   res.json(result);
 }
 

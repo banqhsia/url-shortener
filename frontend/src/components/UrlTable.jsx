@@ -1,13 +1,27 @@
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client.js';
 
-export default function UrlTable({ rows, onDeleted }) {
+export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, SortIcon }) {
   const navigate = useNavigate();
 
   async function handleDelete(id, code) {
     if (!confirm(`Delete /${code}?`)) return;
     await client.delete(`/api/urls/${id}`);
     onDeleted();
+  }
+
+  function SortHeader({ col, label }) {
+    if (!onSort) return <th>{label}</th>;
+    return (
+      <th
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        onClick={() => onSort(col)}
+        title={`Sort by ${label}`}
+      >
+        {label}
+        {SortIcon && <SortIcon col={col} />}
+      </th>
+    );
   }
 
   if (!rows.length) {
@@ -19,9 +33,9 @@ export default function UrlTable({ rows, onDeleted }) {
       <table>
         <thead>
           <tr>
-            <th>Code</th>
+            <SortHeader col="code" label="Code" />
             <th>Original URL</th>
-            <th>Clicks</th>
+            <SortHeader col="click_count" label="Clicks" />
             <th>Actions</th>
           </tr>
         </thead>

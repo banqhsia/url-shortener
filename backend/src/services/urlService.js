@@ -2,9 +2,16 @@ const { getDb } = require('../config/db');
 const { encode } = require('../utils/hashids');
 const { deleteCachedUrl, setCachedUrl } = require('./cacheService');
 
-function getUrls({ page = 1, limit = 25, q = '' }) {
+const ALLOWED_SORT_COLUMNS = new Set(['created_at', 'click_count', 'code', 'expires_at']);
+const ALLOWED_SORT_DIRS = new Set(['asc', 'desc']);
+
+function getUrls({ page = 1, limit = 25, q = '', sort_by = 'created_at', sort_dir = 'desc' }) {
   const db = getDb();
   const offset = (page - 1) * limit;
+
+  const col = ALLOWED_SORT_COLUMNS.has(sort_by) ? sort_by : 'created_at';
+  const dir = ALLOWED_SORT_DIRS.has(sort_dir) ? sort_dir.toUpperCase() : 'DESC';
+  const orderClause = `ORDER BY ${col} ${dir}`;
 
   if (q) {
     const pattern = `%${q}%`;
@@ -13,7 +20,7 @@ function getUrls({ page = 1, limit = 25, q = '' }) {
       .get(pattern, pattern).count;
     const data = db
       .prepare(
-        'SELECT * FROM urls WHERE code LIKE ? OR original_url LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+        `SELECT * FROM urls WHERE code LIKE ? OR original_url LIKE ? ${orderClause} LIMIT ? OFFSET ?`
       )
       .all(pattern, pattern, limit, offset);
     return { data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
@@ -21,7 +28,7 @@ function getUrls({ page = 1, limit = 25, q = '' }) {
 
   const total = db.prepare('SELECT COUNT(*) as count FROM urls').get().count;
   const data = db
-    .prepare('SELECT * FROM urls ORDER BY created_at DESC LIMIT ? OFFSET ?')
+    .prepare(`SELECT * FROM urls ${orderClause} LIMIT ? OFFSET ?`)
     .all(limit, offset);
   return { data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
 }
