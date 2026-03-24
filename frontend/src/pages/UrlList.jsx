@@ -51,6 +51,9 @@ export default function UrlList() {
       <div className="page-header">
         <h1 className="page-title">All URLs</h1>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => { window.location.href = '/api/urls/export'; }}>
+            Export CSV
+          </button>
           <button className="btn btn-secondary" onClick={() => navigate('/admin/urls/bulk')}>
             Bulk Create
           </button>

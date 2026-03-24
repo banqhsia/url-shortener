@@ -3,8 +3,9 @@ const ctrl = require('../../controllers/urlController');
 
 const router = Router();
 
-// /bulk must come before /:id to avoid route shadowing
+// /bulk and /export must come before /:id to avoid route shadowing
 router.post('/bulk', ctrl.bulkCreate);
+router.get('/export', ctrl.exportCsv);
 
 router.get('/', ctrl.list);
 router.post('/', ctrl.create);

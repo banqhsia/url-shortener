@@ -113,4 +113,32 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, create, bulkCreate, update, remove };
+function exportCsv(req, res) {
+  const { getDb } = require('../config/db');
+  const db = getDb();
+  const rows = db.prepare('SELECT id, code, original_url, click_count, expires_at, created_at FROM urls ORDER BY created_at DESC').all();
+
+  const escape = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const lines = [
+    'id,code,original_url,click_count,expires_at,created_at',
+    ...rows.map(r => [
+      r.id,
+      escape(r.code),
+      escape(r.original_url),
+      r.click_count,
+      r.expires_at || '',
+      r.created_at,
+    ].join(',')),
+  ];
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="urls.csv"');
+  res.send(lines.join('\r\n'));
+}
+
+module.exports = { list, getOne, create, bulkCreate, update, remove, exportCsv };

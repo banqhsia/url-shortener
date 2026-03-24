@@ -204,6 +204,19 @@ run_live_tests() {
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" "$BASE_URL/api/stats/url/999999")
   assert_status "GET /api/stats/url/nonexistent → 404" 404 "$STATUS"
 
+  # ── CSV Export ────────────────────────────────────────────────────────────
+  section "CSV Export"
+
+  CSV_HEADERS=$(curl -sI -b "$COOKIE_JAR" "$BASE_URL/api/urls/export")
+  assert_contains "Export returns text/csv" 'text/csv' "$(echo "$CSV_HEADERS" | tr '[:upper:]' '[:lower:]')"
+  assert_contains "Export returns attachment" 'attachment' "$(echo "$CSV_HEADERS" | tr '[:upper:]' '[:lower:]')"
+
+  CSV_BODY=$(curl -s -b "$COOKIE_JAR" "$BASE_URL/api/urls/export")
+  assert_contains "CSV has header row" 'id,code,original_url,click_count' "$CSV_BODY"
+
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/urls/export")
+  assert_status "Export without auth → 401" 401 "$STATUS"
+
   # ── Rate limiting headers ─────────────────────────────────────────────────
   section "Rate limiting"
 
