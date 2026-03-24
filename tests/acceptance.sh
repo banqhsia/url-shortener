@@ -168,6 +168,28 @@ run_live_tests() {
     -H "Content-Type: application/json" -d '{"original_url":"https://example.com"}')
   assert_status "POST /api/urls without auth → 401" 401 "$STATUS"
 
+  # ── URL Expiry ────────────────────────────────────────────────────────────
+  section "URL Expiry"
+
+  PAST_TS=$(($(date +%s) - 10))
+  FUTURE_TS=$(($(date +%s) + 3600))
+
+  # Create expired URL
+  EXP=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE_URL/api/urls" \
+    -H "Content-Type: application/json" \
+    -d "{\"original_url\":\"https://expired.accept.com\",\"expires_at\":$PAST_TS}")
+  EXP_CODE=$(echo "$EXP" | grep -o '"code":"[^"]*"' | cut -d'"' -f4)
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$BASE_URL/$EXP_CODE")
+  assert_status "Expired URL returns 410" 410 "$STATUS"
+
+  # Create future-expiry URL
+  FUT=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE_URL/api/urls" \
+    -H "Content-Type: application/json" \
+    -d "{\"original_url\":\"https://future.accept.com\",\"expires_at\":$FUTURE_TS}")
+  FUT_CODE=$(echo "$FUT" | grep -o '"code":"[^"]*"' | cut -d'"' -f4)
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-redirs 0 "$BASE_URL/$FUT_CODE")
+  assert_status "Non-expired URL still redirects 302" 302 "$STATUS"
+
   # ── Rate limiting headers ─────────────────────────────────────────────────
   section "Rate limiting"
 

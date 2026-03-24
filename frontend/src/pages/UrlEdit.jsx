@@ -5,13 +5,22 @@ import client from '../api/client.js';
 export default function UrlEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ code: '', original_url: '', click_count: 0 });
+  const [form, setForm] = useState({ code: '', original_url: '', click_count: 0, expires_at: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     client.get(`/api/urls/${id}`)
-      .then(({ data }) => setForm({ code: data.code, original_url: data.original_url, click_count: data.click_count }))
+      .then(({ data }) => {
+        // Convert Unix timestamp (seconds) to datetime-local string
+        let expiresLocal = '';
+        if (data.expires_at) {
+          const d = new Date(data.expires_at * 1000);
+          expiresLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+            .toISOString().slice(0, 16);
+        }
+        setForm({ code: data.code, original_url: data.original_url, click_count: data.click_count, expires_at: expiresLocal });
+      })
       .catch(() => setError('Failed to load URL record'));
   }, [id]);
 
@@ -25,7 +34,13 @@ export default function UrlEdit() {
     setSaving(true);
     setError('');
     try {
-      await client.put(`/api/urls/${id}`, form);
+      const payload = { ...form };
+      if (payload.expires_at) {
+        payload.expires_at = Math.floor(new Date(payload.expires_at).getTime() / 1000);
+      } else {
+        payload.expires_at = null; // clear expiry
+      }
+      await client.put(`/api/urls/${id}`, payload);
       navigate('/admin/urls');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save');
@@ -73,6 +88,16 @@ export default function UrlEdit() {
               type="number"
               min="0"
               value={form.click_count}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Expiry Date <span style={{ color: '#888', fontWeight: 400 }}>(leave blank to remove expiry)</span></label>
+            <input
+              name="expires_at"
+              type="datetime-local"
+              value={form.expires_at}
               onChange={handleChange}
             />
           </div>

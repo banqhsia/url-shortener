@@ -4,7 +4,7 @@ import client from '../api/client.js';
 
 export default function UrlCreate() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ original_url: '', code: '' });
+  const [form, setForm] = useState({ original_url: '', code: '', expires_at: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -20,6 +20,7 @@ export default function UrlCreate() {
     try {
       const payload = { original_url: form.original_url };
       if (form.code.trim()) payload.code = form.code.trim();
+      if (form.expires_at) payload.expires_at = Math.floor(new Date(form.expires_at).getTime() / 1000);
       await client.post('/api/urls', payload);
       navigate('/admin/urls');
     } catch (err) {
@@ -59,6 +60,16 @@ export default function UrlCreate() {
               onChange={handleChange}
               placeholder="e.g. my-link"
               pattern="[0-9a-zA-Z\-]+"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Expiry Date <span style={{ color: '#888', fontWeight: 400 }}>(optional — leave blank for no expiry)</span></label>
+            <input
+              name="expires_at"
+              type="datetime-local"
+              value={form.expires_at}
+              onChange={handleChange}
             />
           </div>
 

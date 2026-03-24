@@ -34,13 +34,13 @@ function getUrlByCode(code) {
   return getDb().prepare('SELECT * FROM urls WHERE code = ?').get(code);
 }
 
-function createUrl(originalUrl, customCode = null) {
+function createUrl(originalUrl, customCode = null, expiresAt = null) {
   const db = getDb();
 
   const create = db.transaction(() => {
     const result = db
-      .prepare("INSERT INTO urls (code, original_url) VALUES ('__placeholder__', ?)")
-      .run(originalUrl);
+      .prepare("INSERT INTO urls (code, original_url, expires_at) VALUES ('__placeholder__', ?, ?)")
+      .run(originalUrl, expiresAt);
     const id = result.lastInsertRowid;
     const code = customCode || encode(Number(id));
 
@@ -83,7 +83,7 @@ function bulkCreateUrls(urls) {
   return { results, errors };
 }
 
-async function updateUrl(id, { code, original_url, click_count }) {
+async function updateUrl(id, { code, original_url, click_count, expires_at }) {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
   if (!existing) return null;
@@ -91,10 +91,12 @@ async function updateUrl(id, { code, original_url, click_count }) {
   const newCode = code !== undefined ? code : existing.code;
   const newUrl = original_url !== undefined ? original_url : existing.original_url;
   const newCount = click_count !== undefined ? click_count : existing.click_count;
+  // null clears expiry; undefined means "keep existing"
+  const newExpiry = expires_at !== undefined ? expires_at : existing.expires_at;
 
   db.prepare(
-    'UPDATE urls SET code = ?, original_url = ?, click_count = ?, updated_at = unixepoch() WHERE id = ?'
-  ).run(newCode, newUrl, newCount, id);
+    'UPDATE urls SET code = ?, original_url = ?, click_count = ?, expires_at = ?, updated_at = unixepoch() WHERE id = ?'
+  ).run(newCode, newUrl, newCount, newExpiry, id);
 
   await deleteCachedUrl(existing.code);
   if (newCode !== existing.code) await deleteCachedUrl(newCode);

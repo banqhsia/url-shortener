@@ -18,7 +18,7 @@ function getOne(req, res) {
 
 async function create(req, res, next) {
   try {
-    const { original_url, code } = req.body;
+    const { original_url, code, expires_at } = req.body;
 
     if (!isValidUrl(original_url)) {
       return res.status(400).json({ error: 'original_url must be a valid http or https URL' });
@@ -26,8 +26,15 @@ async function create(req, res, next) {
     if (code && !isValidCode(code)) {
       return res.status(400).json({ error: 'code must be 1–100 alphanumeric characters' });
     }
+    if (expires_at !== undefined && expires_at !== null) {
+      const ts = Number(expires_at);
+      if (!Number.isInteger(ts) || ts <= 0) {
+        return res.status(400).json({ error: 'expires_at must be a positive Unix timestamp (seconds)' });
+      }
+    }
 
-    const record = urlService.createUrl(original_url, code || null);
+    const expiresAtValue = (expires_at !== undefined && expires_at !== null) ? Number(expires_at) : null;
+    const record = urlService.createUrl(original_url, code || null, expiresAtValue);
     res.status(201).json(record);
   } catch (err) {
     if (err.message.includes('already exists') || err.message.includes('UNIQUE')) {
@@ -67,7 +74,7 @@ async function bulkCreate(req, res, next) {
 
 async function update(req, res, next) {
   try {
-    const { code, original_url, click_count } = req.body;
+    const { code, original_url, click_count, expires_at } = req.body;
 
     if (original_url !== undefined && !isValidUrl(original_url)) {
       return res.status(400).json({ error: 'original_url must be a valid http or https URL' });
@@ -75,8 +82,15 @@ async function update(req, res, next) {
     if (code !== undefined && !isValidCode(code)) {
       return res.status(400).json({ error: 'code must be 1–100 alphanumeric characters' });
     }
+    if (expires_at !== undefined && expires_at !== null) {
+      const ts = Number(expires_at);
+      if (!Number.isInteger(ts) || ts <= 0) {
+        return res.status(400).json({ error: 'expires_at must be a positive Unix timestamp (seconds)' });
+      }
+    }
 
-    const record = await urlService.updateUrl(req.params.id, { code, original_url, click_count });
+    const expiresAtValue = expires_at !== undefined ? (expires_at === null ? null : Number(expires_at)) : undefined;
+    const record = await urlService.updateUrl(req.params.id, { code, original_url, click_count, expires_at: expiresAtValue });
     if (!record) return res.status(404).json({ error: 'Not found' });
     res.json(record);
   } catch (err) {
