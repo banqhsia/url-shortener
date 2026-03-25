@@ -1,6 +1,7 @@
 const { getDb } = require('../config/db');
 const { encode } = require('../utils/hashids');
 const { deleteCachedUrl, setCachedUrl } = require('./cacheService');
+const { ConflictError } = require('../errors');
 
 const ALLOWED_SORT_COLUMNS = new Set(['created_at', 'click_count', 'code', 'expires_at']);
 const ALLOWED_SORT_DIRS = new Set(['asc', 'desc']);
@@ -55,7 +56,7 @@ function createUrl(originalUrl, customCode = null, expiresAt = null) {
       const existing = db
         .prepare('SELECT id FROM urls WHERE code = ? AND id != ?')
         .get(customCode, id);
-      if (existing) throw new Error(`Code "${customCode}" already exists`);
+      if (existing) throw new ConflictError(`Code "${customCode}" is already in use`);
     }
 
     db.prepare('UPDATE urls SET code = ? WHERE id = ?').run(code, id);
@@ -101,9 +102,14 @@ async function updateUrl(id, { code, original_url, click_count, expires_at }) {
   // null clears expiry; undefined means "keep existing"
   const newExpiry = expires_at !== undefined ? expires_at : existing.expires_at;
 
-  db.prepare(
-    'UPDATE urls SET code = ?, original_url = ?, click_count = ?, expires_at = ?, updated_at = unixepoch() WHERE id = ?'
-  ).run(newCode, newUrl, newCount, newExpiry, id);
+  try {
+    db.prepare(
+      'UPDATE urls SET code = ?, original_url = ?, click_count = ?, expires_at = ?, updated_at = unixepoch() WHERE id = ?'
+    ).run(newCode, newUrl, newCount, newExpiry, id);
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) throw new ConflictError('Code already in use');
+    throw err;
+  }
 
   await deleteCachedUrl(existing.code);
   if (newCode !== existing.code) await deleteCachedUrl(newCode);

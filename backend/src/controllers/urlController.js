@@ -41,9 +41,6 @@ async function create(req, res, next) {
     checkAndUpdateUrl(record.id).catch(() => {});
     res.status(201).json(record);
   } catch (err) {
-    if (err.message.includes('already exists') || err.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: err.message });
-    }
     next(err);
   }
 }
@@ -99,9 +96,6 @@ async function update(req, res, next) {
     checkAndUpdateUrl(record.id).catch(() => {});
     res.json(record);
   } catch (err) {
-    if (err.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: 'Code already in use' });
-    }
     next(err);
   }
 }
