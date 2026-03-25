@@ -2,6 +2,7 @@ const { getDb } = require('../config/db');
 const { encode } = require('../utils/hashids');
 const { deleteCachedUrl, setCachedUrl } = require('./cacheService');
 const { ConflictError } = require('../errors');
+const repo = require('../db/urlRepository');
 
 const ALLOWED_SORT_COLUMNS = new Set(['created_at', 'click_count', 'code', 'expires_at']);
 const ALLOWED_SORT_DIRS = new Set(['asc', 'desc']);
@@ -35,11 +36,11 @@ function getUrls({ page = 1, limit = 25, q = '', sort_by = 'created_at', sort_di
 }
 
 function getUrlById(id) {
-  return getDb().prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  return repo.findById(id);
 }
 
 function getUrlByCode(code) {
-  return getDb().prepare('SELECT * FROM urls WHERE code = ?').get(code);
+  return repo.findByCode(code);
 }
 
 function createUrl(originalUrl, customCode = null, expiresAt = null) {
@@ -53,14 +54,13 @@ function createUrl(originalUrl, customCode = null, expiresAt = null) {
     const code = customCode || encode(Number(id));
 
     if (customCode) {
-      const existing = db
-        .prepare('SELECT id FROM urls WHERE code = ? AND id != ?')
-        .get(customCode, id);
-      if (existing) throw new ConflictError(`Code "${customCode}" is already in use`);
+      if (repo.findByCodeExcludingId(customCode, id)) {
+        throw new ConflictError(`Code "${customCode}" is already in use`);
+      }
     }
 
     db.prepare('UPDATE urls SET code = ? WHERE id = ?').run(code, id);
-    return db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+    return repo.findById(id);
   });
 
   return create();
@@ -92,8 +92,7 @@ function bulkCreateUrls(urls) {
 }
 
 async function updateUrl(id, { code, original_url, click_count, expires_at }) {
-  const db = getDb();
-  const existing = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  const existing = repo.findById(id);
   if (!existing) return null;
 
   const newCode = code !== undefined ? code : existing.code;
@@ -103,9 +102,7 @@ async function updateUrl(id, { code, original_url, click_count, expires_at }) {
   const newExpiry = expires_at !== undefined ? expires_at : existing.expires_at;
 
   try {
-    db.prepare(
-      'UPDATE urls SET code = ?, original_url = ?, click_count = ?, expires_at = ?, updated_at = unixepoch() WHERE id = ?'
-    ).run(newCode, newUrl, newCount, newExpiry, id);
+    repo.update(id, { code: newCode, original_url: newUrl, click_count: newCount, expires_at: newExpiry });
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) throw new ConflictError('Code already in use');
     throw err;
@@ -114,17 +111,16 @@ async function updateUrl(id, { code, original_url, click_count, expires_at }) {
   await deleteCachedUrl(existing.code);
   if (newCode !== existing.code) await deleteCachedUrl(newCode);
 
-  const updated = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  const updated = repo.findById(id);
   await setCachedUrl(updated.code, updated);
   return updated;
 }
 
 async function deleteUrl(id) {
-  const db = getDb();
-  const existing = db.prepare('SELECT * FROM urls WHERE id = ?').get(id);
+  const existing = repo.findById(id);
   if (!existing) return false;
 
-  db.prepare('DELETE FROM urls WHERE id = ?').run(id);
+  repo.delete(id);
   await deleteCachedUrl(existing.code);
   return true;
 }
