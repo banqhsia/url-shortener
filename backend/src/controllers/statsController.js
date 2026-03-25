@@ -1,13 +1,5 @@
 const { getDb } = require('../config/db');
-
-function getStartOfTodayUTC8() {
-  // Shift now to UTC+8, floor to day boundary, shift back to UTC
-  const now = Date.now();
-  const utc8Offset = 8 * 60 * 60 * 1000;
-  const utc8Now = now + utc8Offset;
-  const startOfDayUTC8 = utc8Now - (utc8Now % (24 * 60 * 60 * 1000));
-  return Math.floor((startOfDayUTC8 - utc8Offset) / 1000);
-}
+const { getStartOfTodayUTC8, getDayBucketsUTC8 } = require('../utils/time');
 
 function dashboard(req, res) {
   const db = getDb();
@@ -54,21 +46,7 @@ function urlStats(req, res) {
 
   const periodDays = req.query.period === '30d' ? 30 : 7;
 
-  // Build day buckets aligned to UTC+8 midnight
-  const utc8Offset = 8 * 60 * 60 * 1000;
-  const now = Date.now();
-  const utc8Now = now + utc8Offset;
-  const todayStartUTC8 = utc8Now - (utc8Now % (24 * 60 * 60 * 1000));
-
-  const buckets = [];
-  for (let i = periodDays - 1; i >= 0; i--) {
-    const dayStartUTC8 = todayStartUTC8 - i * 24 * 60 * 60 * 1000;
-    const dayEndUTC8 = dayStartUTC8 + 24 * 60 * 60 * 1000;
-    const startSec = Math.floor((dayStartUTC8 - utc8Offset) / 1000);
-    const endSec = Math.floor((dayEndUTC8 - utc8Offset) / 1000);
-    const dateLabel = new Date(dayStartUTC8).toISOString().slice(0, 10); // YYYY-MM-DD
-    buckets.push({ date: dateLabel, start: startSec, end: endSec, clicks: 0 });
-  }
+  const buckets = getDayBucketsUTC8(periodDays);
 
   const windowStart = buckets[0].start;
   const rows = db
