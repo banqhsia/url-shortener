@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import client from '../api/client.js';
+import { toUnixSec, toDateLocalStr } from '../utils/datetime.js';
 
 export default function UrlEdit() {
   const { id } = useParams();
@@ -15,12 +16,7 @@ export default function UrlEdit() {
   useEffect(() => {
     client.get(`/api/urls/${id}`)
       .then(({ data }) => {
-        let expiresLocal = '';
-        if (data.expires_at) {
-          const d = new Date(data.expires_at * 1000);
-          expiresLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-            .toISOString().slice(0, 16);
-        }
+        const expiresLocal = data.expires_at ? toDateLocalStr(data.expires_at) : '';
         setForm({ code: data.code, original_url: data.original_url, click_count: data.click_count, expires_at: expiresLocal });
       })
       .catch(() => setError('Failed to load URL record'));
@@ -45,7 +41,7 @@ export default function UrlEdit() {
     try {
       const payload = { ...form };
       if (payload.expires_at) {
-        payload.expires_at = Math.floor(new Date(payload.expires_at).getTime() / 1000);
+        payload.expires_at = toUnixSec(payload.expires_at);
       } else {
         payload.expires_at = null;
       }
