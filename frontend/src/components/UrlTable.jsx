@@ -1,13 +1,20 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client.js';
 
 export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, SortIcon }) {
   const navigate = useNavigate();
+  const [deleteError, setDeleteError] = useState('');
 
   async function handleDelete(id, code) {
     if (!confirm(`Delete /${code}?`)) return;
-    await client.delete(`/api/urls/${id}`);
-    onDeleted();
+    setDeleteError('');
+    try {
+      await client.delete(`/api/urls/${id}`);
+      onDeleted();
+    } catch {
+      setDeleteError(`Failed to delete /${code}. Please try again.`);
+    }
   }
 
   function SortHeader({ col, label }) {
@@ -29,6 +36,8 @@ export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, Sor
   }
 
   return (
+    <div>
+    {deleteError && <div className="alert alert-error">{deleteError}</div>}
     <div className="table-wrap">
       <table>
         <thead>
@@ -72,6 +81,7 @@ export default function UrlTable({ rows, onDeleted, sortBy, sortDir, onSort, Sor
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
