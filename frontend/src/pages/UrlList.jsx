@@ -1,33 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import client from '../api/client.js';
 import UrlTable from '../components/UrlTable.jsx';
 import Pagination from '../components/Pagination.jsx';
 import SearchBar from '../components/SearchBar.jsx';
+import { useFetch } from '../hooks/useFetch.js';
 
 export default function UrlList() {
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, total_pages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('created_at');
   const [sortDir, setSortDir] = useState('desc');
-  const [error, setError] = useState('');
 
-  async function load(p = page, q = query, sb = sortBy, sd = sortDir) {
-    try {
-      const { data: res } = await client.get('/api/urls', {
-        params: { page: p, limit: 25, q, sort_by: sb, sort_dir: sd },
-      });
-      setData(res.data);
-      setPagination(res.pagination);
-    } catch {
-      setError('Failed to load URLs');
-    }
-  }
-
-  useEffect(() => { load(page, query, sortBy, sortDir); }, [page, query, sortBy, sortDir]);
+  const { data: result, error, refetch } = useFetch('/api/urls', {
+    params: { page, limit: 25, q: query, sort_by: sortBy, sort_dir: sortDir },
+    errorMessage: 'Failed to load URLs',
+  });
+  const data = result?.data ?? [];
+  const pagination = result?.pagination ?? { page: 1, total_pages: 1, total: 0 };
 
   function handleSearch(q) {
     setQuery(q);
@@ -75,18 +65,14 @@ export default function UrlList() {
 
         <UrlTable
           rows={data}
-          onDeleted={() => load(page, query, sortBy, sortDir)}
+          onDeleted={refetch}
           sortBy={sortBy}
           sortDir={sortDir}
           onSort={handleSort}
           SortIcon={SortIcon}
         />
-        <Pagination page={page} totalPages={pagination.total_pages} onChange={handlePageChange} />
+        <Pagination page={page} totalPages={pagination.total_pages} onChange={setPage} />
       </div>
     </div>
   );
-
-  function handlePageChange(p) {
-    setPage(p);
-  }
 }

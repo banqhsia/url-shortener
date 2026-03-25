@@ -1,23 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import client from '../api/client.js';
+import { useFetch } from '../hooks/useFetch.js';
 
 export default function UrlStats() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
   const [period, setPeriod] = useState('7d');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    setError('');
-    client.get(`/api/stats/url/${id}`, { params: { period } })
-      .then(({ data }) => setStats(data))
-      .catch(() => setError('Failed to load stats'));
-  }, [id, period]);
+  const { data: stats, error } = useFetch(`/api/stats/url/${id}`, {
+    params: { period },
+    errorMessage: 'Failed to load stats',
+  });
 
   return (
     <div>

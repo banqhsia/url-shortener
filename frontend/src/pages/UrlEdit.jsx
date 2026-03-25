@@ -1,26 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import client from '../api/client.js';
 import { toUnixSec, toDateLocalStr } from '../utils/datetime.js';
+import { useFetch } from '../hooks/useFetch.js';
+import { useForm } from '../hooks/useForm.js';
 
 export default function UrlEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ code: '', original_url: '', click_count: 0, expires_at: '' });
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
+
+  const { form, setForm, handleSubmit, error: submitError, saving } = useForm({
+    code: '', original_url: '', click_count: 0, expires_at: '',
+  });
   const shortUrl = form.code ? `${window.location.origin}/${form.code}` : '';
 
+  const { data: urlData, error: loadError } = useFetch(`/api/urls/${id}`, {
+    errorMessage: 'Failed to load URL record',
+  });
+
+  // Populate form once the API data arrives
   useEffect(() => {
-    client.get(`/api/urls/${id}`)
-      .then(({ data }) => {
-        const expiresLocal = data.expires_at ? toDateLocalStr(data.expires_at) : '';
-        setForm({ code: data.code, original_url: data.original_url, click_count: data.click_count, expires_at: expiresLocal });
-      })
-      .catch(() => setError('Failed to load URL record'));
-  }, [id]);
+    if (!urlData) return;
+    setForm({
+      code: urlData.code,
+      original_url: urlData.original_url,
+      click_count: urlData.click_count,
+      expires_at: urlData.expires_at ? toDateLocalStr(urlData.expires_at) : '',
+    });
+  }, [urlData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!shortUrl) return;
@@ -29,28 +38,10 @@ export default function UrlEdit() {
       .catch(() => {});
   }, [shortUrl]);
 
+  // click_count needs numeric coercion — override the generic handleChange from useForm
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: name === 'click_count' ? Number(value) : value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const payload = { ...form };
-      if (payload.expires_at) {
-        payload.expires_at = toUnixSec(payload.expires_at);
-      } else {
-        payload.expires_at = null;
-      }
-      await client.put(`/api/urls/${id}`, payload);
-      navigate('/admin/urls');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save');
-      setSaving(false);
-    }
   }
 
   function handleDownloadQr() {
@@ -60,6 +51,8 @@ export default function UrlEdit() {
     a.click();
   }
 
+  const displayError = loadError || submitError;
+
   return (
     <div>
       <div className="page-header">
@@ -68,9 +61,18 @@ export default function UrlEdit() {
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div className="card" style={{ maxWidth: 560, flex: '1 1 400px' }}>
-          {error && <div className="alert alert-error">{error}</div>}
+          {displayError && <div className="alert alert-error">{displayError}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit(async (f) => {
+            const payload = { ...f };
+            if (payload.expires_at) {
+              payload.expires_at = toUnixSec(payload.expires_at);
+            } else {
+              payload.expires_at = null;
+            }
+            await client.put(`/api/urls/${id}`, payload);
+            navigate('/admin/urls');
+          })}>
             <div className="form-group">
               <label>Short Code</label>
               <input

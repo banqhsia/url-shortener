@@ -1,34 +1,15 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client.js';
 import { toUnixSec } from '../utils/datetime.js';
+import { useForm } from '../hooks/useForm.js';
 
 export default function UrlCreate() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ original_url: '', code: '', expires_at: '' });
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  function handleChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.original_url) return setError('Original URL is required');
-    setSaving(true);
-    setError('');
-    try {
-      const payload = { original_url: form.original_url };
-      if (form.code.trim()) payload.code = form.code.trim();
-      if (form.expires_at) payload.expires_at = toUnixSec(form.expires_at);
-      await client.post('/api/urls', payload);
-      navigate('/admin/urls');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create URL');
-      setSaving(false);
-    }
-  }
+  const { form, handleChange, handleSubmit, error, saving } = useForm({
+    original_url: '',
+    code: '',
+    expires_at: '',
+  });
 
   return (
     <div>
@@ -39,7 +20,14 @@ export default function UrlCreate() {
       <div className="card" style={{ maxWidth: 560 }}>
         {error && <div className="alert alert-error">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(async (f) => {
+          if (!f.original_url) throw new Error('Original URL is required');
+          const payload = { original_url: f.original_url };
+          if (f.code.trim()) payload.code = f.code.trim();
+          if (f.expires_at) payload.expires_at = toUnixSec(f.expires_at);
+          await client.post('/api/urls', payload);
+          navigate('/admin/urls');
+        })}>
           <div className="form-group">
             <label>Original URL *</label>
             <input

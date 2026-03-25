@@ -1,25 +1,12 @@
-import { useState, useEffect } from 'react';
 import client from '../api/client.js';
 import StatCard from '../components/StatCard.jsx';
+import { useFetch } from '../hooks/useFetch.js';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [error, setError] = useState('');
-
-  async function load() {
-    try {
-      const { data } = await client.get('/api/stats/dashboard');
-      setStats(data);
-    } catch {
-      setError('Failed to load stats');
-    }
-  }
-
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
-  }, []);
+  const { data: stats, error } = useFetch('/api/stats/dashboard', {
+    interval: 60_000,
+    errorMessage: 'Failed to load stats',
+  });
 
   return (
     <div>
